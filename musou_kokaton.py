@@ -228,28 +228,96 @@ class Enemy(pg.sprite.Sprite):
     """
     敵機に関するクラス
     """
-    imgs = [pg.image.load(f"fig/alien{i}.png") for i in range(1, 4)]
-    
     def __init__(self):
         super().__init__()
-        self.image = random.choice(__class__.imgs)
+        self.tick = random.randint(0, 30)
+        self.image = pg.transform.rotozoom(pg.image.load("fig/3_black.png"), 0, 2)
         self.rect = self.image.get_rect()
-        self.rect.center = random.randint(0, WIDTH), 0
-        self.vy = +6
-        self.bound = random.randint(50, HEIGHT/2)  # 停止位置
-        self.state = "down"  # 降下状態or停止状態
+        self.rect.center = WIDTH+10, random.randint(0, HEIGHT)
+        self.vx = -6
+        self.vy = 0
+        self.bound = random.randint(WIDTH*3/4, WIDTH-50)  # 停止位置
+        self.state = "setting"  # 準備状態 or 通常状態
         self.interval = random.randint(50, 300)  # 爆弾投下インターバル
 
     def update(self):
         """
-        敵機を速度ベクトルself.vyに基づき移動（降下）させる
-        ランダムに決めた停止位置_boundまで降下したら，_stateを停止状態に変更する
+        敵機を速度ベクトルself.vxに基づき移動させる
+        ランダムに決めた停止位置_boundまで移動したら，_stateを停止状態に変更する
         引数 screen：画面Surface
         """
-        if self.rect.centery > self.bound:
-            self.vy = 0
-            self.state = "stop"
-        self.rect.centery += self.vy
+        self.tick += 1
+        self.vy *= 0.95
+
+        if self.state == "setting" and self.rect.centerx < self.bound:
+            self.vx = -1
+            self.state = "normal"
+
+        if self.state == "normal":
+            if self.tick % 100 == 0:
+                self.vy = random.choice([-10, 10])
+
+        if not 0 < self.rect.centery + self.vy <HEIGHT:
+            self.vy *= -1
+        self.rect.move_ip(self.vx, self.vy)
+
+
+class Wave:
+    """
+    ウェーブと敵のスポーンを管理して、UIを表示するクラス
+    """
+    def __init__(self, wave: int):
+        """
+        新しいWaveを生成する
+        引数 wave:生成するWaveのレベルを指定する
+        """
+        self.wave = wave
+        self.max_enemies = 1 + 2 * wave  #画面に存在する敵の最大数
+        self.interval = 200 / wave  #次の敵が出るまでの最短時間
+        self.killcount = 0  #現在のウェーブでのキル数
+        self.finish_killcount = 10 * wave  #現在のウェーブでの目標キル数
+        self.latest_spawn = 0  #前回敵が出てからのフレーム数
+        self.tick = 0  #このWaveが生成されてからのフレーム数
+
+        self.font = pg.font.Font(None, 50)
+        self.color = (0, 0, 255)
+        self.ui = self.font.render(f"wave: {wave} enemies: {self.finish_killcount}", 0, self.color)
+        self.ui_rct = self.ui.get_rect()
+        self.ui_rct.center = 200, 50
+
+        self.black_screen = pg.Surface((WIDTH, HEIGHT))
+        self.black_screen.set_alpha(100)
+        self.black_screen.fill((0, 0, 0))
+
+        self.title_font = pg.font.Font(None, 200)
+        self.wave_title = self.title_font.render(f"WAVE{wave}", 0, (255, 255, 255))
+        self.wave_title_rct = self.wave_title.get_rect()
+        self.wave_title_rct.center = WIDTH/2, HEIGHT/2
+
+    def update(self, screen: pg.Surface):
+        """
+        現在のweve数、残りの敵の数を表示するUIを描画する
+        引数 screen:画面Surface
+        """
+        self.latest_spawn += 1
+        self.tick += 1
+        self.ui = self.font.render(f"wave: {self.wave} enemies: {self.finish_killcount-self.killcount}", 0, self.color)
+        screen.blit(self.ui, self.ui_rct)
+        if self.tick < 60:
+            screen.blit(self.black_screen, [0, 0])
+            screen.blit(self.wave_title, self.wave_title_rct)
+
+    def get_enemy_spawn(self, enemy_count: int) -> bool:
+        """
+        現在敵をスポーンさせることができるかを返す関数
+        引数 enemy_count:現在の敵の数
+        戻り値 スポーンが可能かどうかのbool
+        """
+        if enemy_count < self.max_enemies and self.latest_spawn >= self.interval:
+            self.latest_spawn = 0
+            return True
+        else:
+            return False
 
 
 class Score:
@@ -312,6 +380,7 @@ def main():
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     bg_img = pg.image.load(f"fig/pg_bg.jpg")
     score = Score()
+    wave = Wave(1)
 
     bird = Bird(3, (900, 400), "normal", 0)
     bombs = pg.sprite.Group()
@@ -351,20 +420,22 @@ def main():
             exps.add(Explosion(bomb, 50)) # 爆発エフェクト爆弾
         for emy in pg.sprite.groupcollide(emys, gra, True, False).keys():
             exps.add(Explosion(emy, 50)) # 爆発エフェクトエネミィ
+            wave.killcount += 1 #Waveクラスのkillcount増加
         screen.blit(bg_img, [0, 0])
 
-        if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
+        if wave.get_enemy_spawn(len(emys)):  # Waveクラスのget_enemy_spawn()関数から敵のスポーンができるかどうかを取得
             emys.add(Enemy())
 
         for emy in emys:
-            if emy.state == "stop" and tmr%emy.interval == 0:
-                # 敵機が停止状態に入ったら，intervalに応じて爆弾投下
+            if emy.state == "normal" and tmr%emy.interval == 0:
+                # 敵機が通常状態に入ったら，intervalに応じて爆弾投下
                 bombs.add(Bomb(emy, bird))
 
         for emy in pg.sprite.groupcollide(emys, beams, True, True).keys():
             exps.add(Explosion(emy, 100))  # 爆発エフェクト
             score.value += 10  # 10点アップ
             bird.change_img(6, screen)  # こうかとん喜びエフェクト
+            wave.killcount += 1 #Waveクラスのkillcount増加
 
         for bomb in pg.sprite.groupcollide(bombs, beams, True, True).keys():
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
@@ -373,6 +444,7 @@ def main():
         if len([bomb for bomb in pg.sprite.spritecollide(bird, bombs, True) if bomb.state != "inactive"]) != 0:
             if bird.state == "hyper":
                 score.value += 1
+                wave.killcount += 1 #Waveクラスのkillcount増加
                 exps.add(Explosion(bird, 100))
             else:
                 bird.change_img(8, screen) # こうかとん悲しみエフェクト
@@ -380,6 +452,9 @@ def main():
                 pg.display.update()
                 time.sleep(2)
                 return
+        if wave.killcount >= wave.finish_killcount:
+            wave = Wave(wave.wave + 1)
+
         gra.update(screen)
 
         bird.update(key_lst, screen)
@@ -392,6 +467,7 @@ def main():
         exps.update()
         exps.draw(screen)
         score.update(screen)
+        wave.update(screen)
 
         pg.display.update()
         tmr += 1
