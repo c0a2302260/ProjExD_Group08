@@ -306,6 +306,40 @@ class Emp:
             bomb.speed = bomb.speed / 2
             bomb.state = "inactive"
 
+class Beamremain:
+    """
+    ビームの残弾数を管理するクラス。
+    ビームの残弾数は self.remain に格納され、update メソッドでリロードされる（リロード時間は2秒）。
+    hyouji メソッドで残弾数を画面の左下に表示する。
+    """
+
+    def __init__(self, screen:pg.Surface) -> None:
+        self.count = 0  # リロードのカウントを管理する変数
+        self.remain = 20  # 初期残弾数
+        self.screen = screen  # 描画対象のスクリーン
+        # ビームの画像を90度回転して読み込み、re_bm_imgに格納
+        self.re_bm_img = pg.transform.rotate(pg.image.load("fig/beam.png"), 90)
+        # 初期残弾数分のビーム画像をスクリーンに描画
+        for i in range(self.remain):
+            self.screen.blit(self.re_bm_img, [200+i*20, HEIGHT-70])
+    
+    def update(self):
+        # 残弾数が0の場合、リロードのカウントを増やす
+        if self.remain <= 0:
+            self.count += 1
+        else:
+            # 残弾数がある場合はカウントをリセット
+            self.count = 0
+        # カウントが100に達したら、残弾数を20にリセット（リロード完了）
+        if self.count >= 100:
+            self.remain = 20
+
+    def hyouji(self):
+        # 現在の残弾数分のビーム画像をスクリーンに描画
+        for i in range(self.remain):
+            self.screen.blit(self.re_bm_img, [200+i*20, HEIGHT-70])
+
+
 
 def main():
     pg.display.set_caption("真！こうかとん無双")
@@ -319,19 +353,20 @@ def main():
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
     gra = pg.sprite.Group()
-    num = 5  # 複数方向へ放つ時のビームの数
-
+    num = 4  # 複数方向へ放つ時のビームの数
+    remain=Beamremain(screen)
     tmr = 0
     clock = pg.time.Clock()
 
     while True:
+
         key_lst = pg.key.get_pressed()
 
         for event in pg.event.get():
+            if event.type == pg.KEYDOWN and event.key == pg.K_r:
+                remain.remain=0
             if event.type == pg.QUIT:
                 return 0
-            if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
-                beams.add(Beam(bird, 0))
             if event.type == pg.KEYDOWN and event.key == pg.K_RSHIFT:
                 if score.value >= 100:
                     score.value -= 100
@@ -345,8 +380,14 @@ def main():
                 Emp(emys, bombs, screen)
                 score.value -= 20
             if key_lst[pg.K_LSHIFT] and key_lst[pg.K_SPACE]:
-                neobeam = Neobeam(bird, num)
-                beams.add(neobeam.gen_beams())  # BeamインスタンスのリストをBeamグループに追加
+                if remain.remain>0:
+                    neobeam = Neobeam(bird, num)
+                    beams.add(neobeam.gen_beams())  # BeamインスタンスのリストをBeamグループに追加
+                    remain.remain-=num
+            elif event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
+                if remain.remain>0:
+                    beams.add(Beam(bird, 0))
+                    remain.remain-=1
         for bomb in pg.sprite.groupcollide(bombs, gra, True, False).keys():
             exps.add(Explosion(bomb, 50)) # 爆発エフェクト爆弾
         for emy in pg.sprite.groupcollide(emys, gra, True, False).keys():
@@ -380,6 +421,8 @@ def main():
                 pg.display.update()
                 time.sleep(2)
                 return
+        remain.hyouji()
+            
         gra.update(screen)
 
         bird.update(key_lst, screen)
@@ -392,6 +435,7 @@ def main():
         exps.update()
         exps.draw(screen)
         score.update(screen)
+        remain.update()
 
         pg.display.update()
         tmr += 1
