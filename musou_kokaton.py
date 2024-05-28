@@ -317,8 +317,6 @@ class Wave:
         if enemy_count < self.max_enemies and self.latest_spawn >= self.interval:
             self.latest_spawn = 0
             return True
-        else:
-            return False
 
 
 class Score:
@@ -356,6 +354,7 @@ class Gravity(pg.sprite.Sprite):
         if self.life<0:
             self.kill()
         
+
 class Emp:
     """
     EMP
@@ -375,6 +374,7 @@ class Emp:
             bomb.speed = bomb.speed / 2
             bomb.state = "inactive"
 
+
 class TimeUP_emp:
     """
     empのクールタイムを表示するクラス
@@ -392,6 +392,7 @@ class TimeUP_emp:
             self.value -= 1
         self.image = self.font.render(f"emp_cooldown: {int(self.value/50)}", 0, self.color)
         screen.blit(self.image, self.rect)
+
 
 class TimeUP_Gravity:
     """
@@ -411,6 +412,7 @@ class TimeUP_Gravity:
         self.image = self.font.render(f"gra_cooldown: {int(self.value/50)}", 0, self.color)
         screen.blit(self.image, self.rect)
 
+
 class TimeUP_Hyper:
     """
     hyperのクールタイムを表示するクラス
@@ -429,6 +431,7 @@ class TimeUP_Hyper:
         self.image = self.font.render(f"hyper_cooldown: {int(self.value/50)}", 0, self.color)
         screen.blit(self.image, self.rect)
 
+
 class Mylife:
     """
     自機の残機を表示するクラス
@@ -442,6 +445,8 @@ class Mylife:
         screen.blit(self.txt, [40, 75])
         for i in range(bird.life):
             screen.blit(self.image, [120+(30*i), 85])
+
+
 class Beamremain:
     """
     ビームの残弾数を管理するクラス。
@@ -533,6 +538,10 @@ def main():
             wave.killcount += 1 #Waveクラスのkillcount増加
         screen.blit(bg_img, [0, 0])
 
+        for emy in emys:
+            if emy.rect.center[0] <= 0:
+                emy.kill()
+
         if wave.get_enemy_spawn(len(emys)):  # Waveクラスのget_enemy_spawn()関数から敵のスポーンができるかどうかを取得
             emys.add(Enemy())
 
@@ -569,10 +578,6 @@ def main():
         if wave.killcount >= wave.finish_killcount:
             wave = Wave(wave.wave + 1)
 
-        
-            
-        gra.update(screen)
-
         x = (tmr*10)%3200 # 背景の動くスピードを調整
         screen.blit(bg_img, [-x, 0]) # 背景を動かす
         screen.blit(bg_img2, [-x+1600, 0])
@@ -587,13 +592,14 @@ def main():
         bombs.draw(screen)
         exps.update()
         exps.draw(screen)
+        gra.update(screen)
         score.update(screen)
-        wave.update(screen)
         timeup_emp.update(screen)
         timeup_gravity.update(screen)
         timeup_hyper.update(screen)
         lifes.update(screen, bird)
         remain.update()
+        wave.update(screen)
         pg.display.update()
         tmr += 1
         clock.tick(50)
