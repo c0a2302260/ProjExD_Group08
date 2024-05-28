@@ -374,6 +374,59 @@ class Emp:
             bomb.speed = bomb.speed / 2
             bomb.state = "inactive"
 
+class TimeUP_emp:
+    """
+    empのクールタイムを表示するクラス
+    """
+    def __init__(self):
+        self.font = pg.font.Font(None, 50)
+        self.color = (0, 0, 255)
+        self.value = 0
+        self.image = self.font.render(f"emp_cooldown: {int(self.value/50)}", 0, self.color)
+        self.rect = self.image.get_rect()
+        self.rect.center = 150, HEIGHT-100
+
+    def update(self, screen: pg.Surface):
+        if self.value > 0:
+            self.value -= 1
+        self.image = self.font.render(f"emp_cooldown: {int(self.value/50)}", 0, self.color)
+        screen.blit(self.image, self.rect)
+
+class TimeUP_Gravity:
+    """
+    Gravityのクールタイムを表示するクラス
+    """
+    def __init__(self):
+        self.font = pg.font.Font(None, 50)
+        self.color = (0, 0, 255)
+        self.value = 0
+        self.image = self.font.render(f"gra_cooldown: {int(self.value/50)}", 0, self.color)
+        self.rect = self.image.get_rect()
+        self.rect.center = 150, HEIGHT-150
+
+    def update(self, screen: pg.Surface):
+        if self.value > 0:
+            self.value -= 1
+        self.image = self.font.render(f"gra_cooldown: {int(self.value/50)}", 0, self.color)
+        screen.blit(self.image, self.rect)
+
+class TimeUP_Hyper:
+    """
+    hyperのクールタイムを表示するクラス
+    """
+    def __init__(self):
+        self.font = pg.font.Font(None, 50)
+        self.color = (0, 0, 255)
+        self.value = 0
+        self.image = self.font.render(f"hyper_cooldown: {int(self.value/50)}", 0, self.color)
+        self.rect = self.image.get_rect()
+        self.rect.center = 160, HEIGHT-200
+
+    def update(self, screen: pg.Surface):
+        if self.value > 0:
+            self.value -= 1
+        self.image = self.font.render(f"hyper_cooldown: {int(self.value/50)}", 0, self.color)
+        screen.blit(self.image, self.rect)
 
 def main():
     pg.display.set_caption("真！こうかとん無双")
@@ -381,6 +434,9 @@ def main():
     bg_img = pg.image.load(f"fig/pg_bg.jpg")
     score = Score()
     wave = Wave(1)
+    timeup_emp = TimeUP_emp()
+    timeup_gravity = TimeUP_Gravity()
+    timeup_hyper = TimeUP_Hyper()
 
     bird = Bird(3, (900, 400), "normal", 0)
     bombs = pg.sprite.Group()
@@ -401,18 +457,16 @@ def main():
                 return 0
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 beams.add(Beam(bird, 0))
-            if event.type == pg.KEYDOWN and event.key == pg.K_RSHIFT:
-                if score.value >= 100:
-                    score.value -= 100
-                    bird.state = "hyper"
-                    bird.hyper_life = 500
-            if event.type == pg.KEYDOWN and event.key == pg.K_RETURN:
-                if score.value >= 200:
-                    score.value -= 200
-                    gra.add(Gravity(400))
-            if event.type == pg.KEYDOWN and event.key == pg.K_e and score.value >= 20:
+            if event.type == pg.KEYDOWN and event.key == pg.K_RSHIFT and timeup_hyper.value == 0: #クールタイムが0の時
+                bird.state = "hyper"
+                bird.hyper_life = 500
+                timeup_hyper.value = 60*50 #クールタイムを設定
+            if event.type == pg.KEYDOWN and event.key == pg.K_RETURN and timeup_gravity.value == 0: #クールタイムが0の時
+                gra.add(Gravity(400))
+                timeup_gravity.value = 60*50 #クールタイムを設定
+            if event.type == pg.KEYDOWN and event.key == pg.K_e and timeup_emp.value == 0: #クールタイムが0の時
                 Emp(emys, bombs, screen)
-                score.value -= 20
+                timeup_emp.value = 15*50 #クールタイムを設定
             if key_lst[pg.K_LSHIFT] and key_lst[pg.K_SPACE]:
                 neobeam = Neobeam(bird, num)
                 beams.add(neobeam.gen_beams())  # BeamインスタンスのリストをBeamグループに追加
@@ -468,7 +522,9 @@ def main():
         exps.draw(screen)
         score.update(screen)
         wave.update(screen)
-
+        timeup_emp.update(screen)
+        timeup_gravity.update(screen)
+        timeup_hyper.update(screen)
         pg.display.update()
         tmr += 1
         clock.tick(50)
