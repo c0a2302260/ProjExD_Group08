@@ -432,6 +432,7 @@ def main():
     pg.display.set_caption("真！こうかとん無双")
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     bg_img = pg.image.load(f"fig/pg_bg.jpg")
+    bg_img2 = pg.transform.flip(bg_img, True, False)
     score = Score()
     wave = Wave(1)
     timeup_emp = TimeUP_emp()
@@ -511,6 +512,11 @@ def main():
 
         gra.update(screen)
 
+        x = (tmr*10)%3200 # 背景の動くスピードを調整
+        screen.blit(bg_img, [-x, 0]) # 背景を動かす
+        screen.blit(bg_img2, [-x+1600, 0])
+        screen.blit(bg_img, [-x+3200, 0])
+        screen.blit(bg_img2, [-x+4800, 0])
         bird.update(key_lst, screen)
         beams.update()
         beams.draw(screen)
