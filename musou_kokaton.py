@@ -510,8 +510,6 @@ def main():
                 remain.remain=0
             if event.type == pg.QUIT:
                 return 0
-            if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
-                beams.add(Beam(bird, 0))
             if event.type == pg.KEYDOWN and event.key == pg.K_RSHIFT and timeup_hyper.value == 0: #クールタイムが0の時
                 bird.state = "hyper"
                 bird.hyper_life = 500
