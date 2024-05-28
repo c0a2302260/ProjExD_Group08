@@ -75,6 +75,7 @@ class Bird(pg.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = xy
         self.speed = 10
+        self.life = 3  # 自機の残機
 
     def change_img(self, num: int, screen: pg.Surface):
         """
@@ -428,6 +429,21 @@ class TimeUP_Hyper:
         self.image = self.font.render(f"hyper_cooldown: {int(self.value/50)}", 0, self.color)
         screen.blit(self.image, self.rect)
 
+class Mylife:
+    """
+    自機の残機を表示するクラス
+    """
+    def __init__(self):
+        self.font = pg.font.Font(None, 50)
+        self.txt = self.font.render(f"Life:", 0, (0, 0, 255))
+        self.image = pg.image.load(f"fig/heart.png")
+
+    def update(self, screen: pg.Surface, bird: Bird):
+        screen.blit(self.txt, [40, 75])
+        for i in range(bird.life):
+            screen.blit(self.image, [120+(30*i), 85])
+
+
 def main():
     pg.display.set_caption("真！こうかとん無双")
     screen = pg.display.set_mode((WIDTH, HEIGHT))
@@ -438,6 +454,7 @@ def main():
     timeup_emp = TimeUP_emp()
     timeup_gravity = TimeUP_Gravity()
     timeup_hyper = TimeUP_Hyper()
+    lifes = Mylife()
 
     bird = Bird(3, (900, 400), "normal", 0)
     bombs = pg.sprite.Group()
@@ -501,9 +518,13 @@ def main():
                 score.value += 1
                 wave.killcount += 1 #Waveクラスのkillcount増加
                 exps.add(Explosion(bird, 100))
+            elif bird.life > 1:
+                bird.life -= 1
             else:
+                bird.life -= 1
                 bird.change_img(8, screen) # こうかとん悲しみエフェクト
                 score.update(screen)
+                lifes.update(screen, bird)
                 pg.display.update()
                 time.sleep(2)
                 return
@@ -531,6 +552,8 @@ def main():
         timeup_emp.update(screen)
         timeup_gravity.update(screen)
         timeup_hyper.update(screen)
+        lifes.update(screen, bird)
+
         pg.display.update()
         tmr += 1
         clock.tick(50)
